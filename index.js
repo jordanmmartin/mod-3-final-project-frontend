@@ -1,21 +1,121 @@
 document.addEventListener("DOMContentLoaded", () => {
   let webSocket;
-  document.querySelector('#testbutton')
-    .addEventListener('click', () => joinChannel())
+  let channelId;
+  let userId = 1
+  const container = document.querySelector('#container')
 
-  document.querySelector('#endbutton')
-    .addEventListener('click', () => {
-      const subscribeMsg = {
+  function identifier(channelId) {
+    return `{\"channel\":\"VideosChannel\",\"id\":\"${channelId}\"}`
+  }
+
+  function makeForm() {
+    const form = document.createElement('form')
+    form.id = 'add-video-form'
+    form.innerHTML = `
+    <input type="text" name="textform" placeholder="YouTube Video ID...">
+    <input type="submit" value"Add Video">
+    `;
+    form.addEventListener('submit', addVideoHandler)
+    container.append(form)
+  }
+
+  function getChannelList() {
+    container.innerHTML = ''
+    const ul = document.createElement('ul')
+    ul.className = 'channel-list'
+    fetch('http://localhost:3000/channels')
+      .then(r => r.json())
+      .then(channels => channels.forEach(channel => ul.append(displayChannel(channel))))
+    container.append(ul)
+  }
+
+  function displayChannel(channel) {
+    const li = document.createElement('li')
+    li.innerText = channel.name
+    li.dataset.id = channel.id
+    li.addEventListener('click', showChannelPage)
+    return li
+  }
+
+  function addVideoHandler(e) {
+    e.preventDefault()
+    console.dir(e.target)
+    let options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        url: e.target.textform.value,
+        user_id: userId,
+        channel_id: channelId
+      })
+    }
+    fetch('http://localhost:3000/videos', options)
+      .then(r => r.json())
+      .then(json => {
+        sendAddedPlaylist()
+      })
+
+    e.target.textform.value = ''
+  }
+
+  function showChannelPage(e) {
+    container.innerHTML = ''
+    showBackButton()
+    document.querySelector('iframe')
+      .hidden = false
+    channelId = parseInt(e.target.dataset.id)
+    joinChannel()
+  }
+
+  // function updateChannelSync() {
+  //   const options = {
+  //     method: "PATCH",
+  //     headers: {
+  //       "Content-Type": "application/json"
+  //     },
+  //     body: JSON.stringify({
+  //       time: window.player.getCurrentTime()
+  //     })
+  //   }
+  //   return fetch(`http://localhost:3000/channels/${channelId}`, options)
+  // }
+
+  function sendAddedPlaylist() {
+    const message = {
+      "command": "message",
+      "identifier": identifier(channelId),
+      "data": `{\"action\": \"add_video\",\"time\": \"${window.player.getCurrentTime()}\"}`
+    }
+    webSocket.send(JSON.stringify(message))
+  }
+
+  function showBackButton() {
+    const button = document.createElement('button')
+    button.id = 'back-button'
+    button.innerText = 'Back'
+    button.addEventListener('click', () => {
+      const unsubscribeMsg = {
         "command": "unsubscribe",
-        "identifier": "{\"channel\":\"VideosChannel\",\"id\":\"1\"}"
+        "identifier": identifier(channelId)
       }
       console.log('unsubscribed')
-      webSocket.send(JSON.stringify(subscribeMsg))
-      // webSocket.close()
+      webSocket.send(JSON.stringify(unsubscribeMsg))
+
+      window.player.stopVideo()
+      document.querySelector('iframe')
+        .hidden = true
+
+      getChannelList()
     })
+    container.append(button)
+  }
+
 
   function joinChannel() {
-    fetch('http://localhost:3000/channels/1')
+    makeForm()
+    fetch(`http://localhost:3000/channels/${channelId}`)
       .then(r => r.json())
       .then(videoInitOnJoin)
 
@@ -23,7 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     webSocket.onopen = (event) => {
       const subscribeMsg = {
         "command": "subscribe",
-        "identifier": "{\"channel\":\"VideosChannel\",\"id\":\"1\"}"
+        "identifier": identifier(channelId)
       }
       webSocket.send(JSON.stringify(subscribeMsg))
     }
@@ -60,14 +160,16 @@ document.addEventListener("DOMContentLoaded", () => {
           'onStateChange': onPlayerStateChange
         }
       });
+      document.querySelector('iframe')
+        .hidden = true
     }
   }
 
   function onPlayerStateChange(event) {
-    console.log(event)
+    // console.log(event)
     const message = {
       "command": "message",
-      "identifier": "{\"channel\":\"VideosChannel\",\"id\":\"1\"}",
+      "identifier": identifier(channelId),
       "data": `{\"action\": \"sync_videos\",
           \"current_video_url\": \"${event.target.j.videoData.video_id}\",
           \"time\": \"${event.target.j.currentTime}\",
@@ -77,35 +179,38 @@ document.addEventListener("DOMContentLoaded", () => {
     webSocket.send(JSON.stringify(message))
   }
 
+  function socketListenerInit(webSocket) {
+    webSocket.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      if (data["type"] !== "ping") {
+        console.log(data)
+      }
+      if (data.message.action === "sync_videos") {
+        videoSyncControl(data.message)
+      }
+      if (data.message.action === "add_video") {
+        fetch(`http://localhost:3000/channels/${channelId}`)
+          .then(r => r.json())
+          .then(e => videoInitOnJoin(e, parseInt(data.message.time)))
+      }
+    }
+  }
+
+  getChannelList()
   initVideo()
 })
 
-function socketListenerInit(webSocket) {
-  webSocket.onmessage = (event) => {
-    const data = JSON.parse(event.data)
-    if (data["type"] !== "ping") {
-      console.log(data)
-    }
-    if (data.message.action === "sync_videos") {
-      videoSyncControl(data.message)
-    }
-    // if (!!data["message"]["video"]) {
-    //   loadVideo(data["message"]["video"])
-    // }
-  }
-}
 
-function videoInitOnJoin(data) {
+function videoInitOnJoin(data, time) {
   let playlistArr = data.videos.map(obj => obj.url)
-  console.log(playlistArr)
-  window.player.loadPlaylist(playlistArr, parseInt(data.playlist_index), parseInt(data.time))
+  window.player.loadPlaylist(playlistArr, parseInt(data.playlist_index), time ? time : parseInt(data.time))
 }
 
 function videoSyncControl(data) {
   if (window.player.getPlaylistIndex() !== parseInt(data.playlist_index)) {
     player.playVideoAt(parseInt(data.playlist_index))
   }
-  if (Math.abs(window.player.getCurrentTime() - parseInt(data.time)) > 0.5) {
+  if (Math.abs(window.player.getCurrentTime() - parseInt(data.time)) > 1) {
     window.player.seekTo(parseInt(data.time))
   }
   switch (data.state) {
@@ -118,12 +223,6 @@ function videoSyncControl(data) {
   }
 }
 
-// function getPlaylist() {
-//
-// }
-
 function loadVideo(videoId) {
   window.player.loadVideoById(videoId)
 }
-
-["TeccAtqd5K8", "b1LNQBX8JwE", "UlFMVzo9zuE"]

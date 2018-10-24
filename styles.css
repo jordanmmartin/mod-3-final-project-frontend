@@ -1,0 +1,14 @@
+body {
+  font-family: "Helvetica Neue", "Arial", sans-serif;
+}
+
+h1 a {
+  all:unset;
+}
+
+#video-container {
+    text-align: center;
+}
+#container {
+  text-align: center;
+}
