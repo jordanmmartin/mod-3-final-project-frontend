@@ -1,11 +1,39 @@
 document.addEventListener("DOMContentLoaded", () => {
   let webSocket;
   let channelId;
-  let userId = 1
+  let currentUser;
   const container = document.querySelector('#container')
 
   function identifier(channelId) {
     return `{\"channel\":\"VideosChannel\",\"id\":\"${channelId}\"}`
+  }
+
+  function showUserSignIn() {
+    const form = document.createElement('form')
+    form.innerHTML = '<input type="text" name="username"><input type="submit">'
+    form.addEventListener('submit', handleSignIn)
+    container.append(form)
+  }
+
+  function handleSignIn(e) {
+    e.preventDefault()
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        username: e.target.username.value
+      })
+    }
+    fetch('http://localhost:3000/users', options)
+      .then(r => r.json())
+      .then(user => {
+        currentUser = { ...user }
+        console.log(currentUser.id)
+      })
+      .then(getChannelList)
+      .then(() => webSocket = openConnection())
   }
 
   function makeForm() {
@@ -21,6 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function getChannelList() {
     container.innerHTML = ''
+    container.append(displayNewChannelForm())
     const ul = document.createElement('ul')
     ul.className = 'channel-list'
     fetch('http://localhost:3000/channels')
@@ -33,8 +62,40 @@ document.addEventListener("DOMContentLoaded", () => {
     const li = document.createElement('li')
     li.innerText = channel.name
     li.dataset.id = channel.id
-    li.addEventListener('click', showChannelPage)
+    li.addEventListener('click', e => showChannelPage(e.target.dataset.id))
     return li
+  }
+
+  function displayNewChannelForm() {
+    const showForm = document.createElement('div')
+    showForm.innerText = 'New Channel +'
+    const form = document.createElement('form')
+    form.innerHTML = '<input type="text" name="channelname" placeholder="Channel name..."><input type="submit" value="Create Channel">'
+    form.addEventListener('submit', handleNewChannel)
+    form.hidden = true
+    showForm.append(form)
+    showForm.addEventListener('click', () => form.hidden === true ? form.hidden = false : form.hidden = true)
+    return showForm
+  }
+
+  function handleNewChannel(e) {
+    e.preventDefault()
+    //post
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        name: e.target.channelname.value,
+        time: 0,
+        state: 0,
+        playlist_index: 0
+      })
+    }
+    fetch('http://localhost:3000/channels', options)
+      .then(r => r.json())
+      .then(channel => showChannelPage(channel.id))
   }
 
   function addVideoHandler(e) {
@@ -47,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
       },
       body: JSON.stringify({
         url: e.target.textform.value,
-        user_id: userId,
+        user_id: currentUser.id,
         channel_id: channelId
       })
     }
@@ -60,12 +121,12 @@ document.addEventListener("DOMContentLoaded", () => {
     e.target.textform.value = ''
   }
 
-  function showChannelPage(e) {
+  function showChannelPage(id) {
     container.innerHTML = ''
     showBackButton()
     document.querySelector('iframe')
       .hidden = false
-    channelId = parseInt(e.target.dataset.id)
+    channelId = parseInt(id)
     joinChannel()
   }
 
@@ -102,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       console.log('unsubscribed')
       webSocket.send(JSON.stringify(unsubscribeMsg))
-
+      channelId = null
       window.player.stopVideo()
       document.querySelector('iframe')
         .hidden = true
@@ -119,14 +180,11 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(r => r.json())
       .then(videoInitOnJoin)
 
-    webSocket = openConnection()
-    webSocket.onopen = (event) => {
-      const subscribeMsg = {
-        "command": "subscribe",
-        "identifier": identifier(channelId)
-      }
-      webSocket.send(JSON.stringify(subscribeMsg))
+    const subscribeMsg = {
+      "command": "subscribe",
+      "identifier": identifier(channelId)
     }
+    webSocket.send(JSON.stringify(subscribeMsg))
     socketListenerInit(webSocket)
   }
 
@@ -196,7 +254,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  getChannelList()
+  // getChannelList()
+  showUserSignIn()
   initVideo()
 })
 
