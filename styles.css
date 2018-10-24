@@ -1,15 +1,26 @@
-body {
-  font-family: "Helvetica Neue", "Arial", sans-serif;
+#chat-container {
 }
 
-h1 a {
-  all:unset;
+#chat {
+  overflow-y: scroll;
+    height: 360px;
+    width: 100%;
+    font-size:12px;
 }
 
-#video-container {
-    text-align: center;
+#chat li {
+  word-wrap: break-word;
 }
 
-#container {
-  text-align: center;
+h1 {
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+h2 #back-button{
+  margin-left: 20px;
+}
+
+#add-video-container {
+  padding-top: 5px;
 }

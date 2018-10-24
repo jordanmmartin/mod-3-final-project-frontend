@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showUserSignIn() {
     const form = document.createElement('form')
-    form.innerHTML = '<input type="text" name="username"><input type="submit">'
+    form.innerHTML = '<div class="form-group"><label for="username">Display Name:</label><input type="text" name="username" class="form-control" placeholder="Enter a name..."></div><input type="submit" class="btn btn-success" value="Enter">'
     form.addEventListener('submit', handleSignIn)
     container.append(form)
   }
@@ -37,18 +37,22 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function makeForm() {
+    const div = document.querySelector('#add-video-container')
     const form = document.createElement('form')
     form.id = 'add-video-form'
+    form.className = 'form-inline'
     form.innerHTML = `
-    <input type="text" name="textform" placeholder="YouTube Video ID...">
-    <input type="submit" value"Add Video">
+    <input type="text" name="textform" placeholder="YouTube Video ID..." class="form-control">
+    <input type="submit" value"Add Video" class="btn btn-success">
     `;
     form.addEventListener('submit', addVideoHandler)
-    container.append(form)
+    div.append(form)
   }
 
   function getChannelList() {
     container.innerHTML = ''
+    document.querySelector('#page-name')
+      .innerHTML = "<h2>Channels</h2>"
     container.append(displayNewChannelForm())
     const ul = document.createElement('ul')
     ul.className = 'channel-list'
@@ -70,7 +74,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const showForm = document.createElement('div')
     showForm.innerText = 'New Channel +'
     const form = document.createElement('form')
-    form.innerHTML = '<input type="text" name="channelname" placeholder="Channel name..."><input type="submit" value="Create Channel">'
+    form.className = 'form-inline'
+    form.innerHTML = '<input type="text" name="channelname" placeholder="Channel name..." class="form-control"><input type="submit" value="Create Channel" class="btn btn-success">'
     form.addEventListener('submit', handleNewChannel)
     form.hidden = true
     showForm.append(form)
@@ -123,7 +128,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showChannelPage(id) {
     container.innerHTML = ''
-    showBackButton()
     document.querySelector('iframe')
       .hidden = false
     channelId = parseInt(id)
@@ -155,7 +159,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function showBackButton() {
     const button = document.createElement('button')
     button.id = 'back-button'
-    button.innerText = 'Back'
+    button.innerText = 'Leave Channel'
+    button.className = "btn btn-outline-danger btn-sm"
     button.addEventListener('click', () => {
       const unsubscribeMsg = {
         "command": "unsubscribe",
@@ -163,6 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       console.log('unsubscribed')
       webSocket.send(JSON.stringify(unsubscribeMsg))
+      clearChannelPage()
       channelId = null
       window.player.stopVideo()
       document.querySelector('iframe')
@@ -170,15 +176,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
       getChannelList()
     })
-    container.append(button)
+    return button
   }
-
 
   function joinChannel() {
     makeForm()
     fetch(`http://localhost:3000/channels/${channelId}`)
       .then(r => r.json())
-      .then(videoInitOnJoin)
+      .then(json => {
+        showMessageHistory(json.messages)
+        videoInitOnJoin(json)
+        const pageName = document.querySelector('#page-name')
+        pageName.innerHTML = ''
+        const h2 = document.createElement('h2')
+        h2.innerText = json.name
+        h2.append(showBackButton())
+        pageName.append(h2)
+      })
 
     const subscribeMsg = {
       "command": "subscribe",
@@ -214,6 +228,8 @@ document.addEventListener("DOMContentLoaded", () => {
           modestbranding: 1,
           rel: 0
         },
+        width: '100%',
+        height: '100%',
         events: {
           'onStateChange': onPlayerStateChange
         }
@@ -229,7 +245,6 @@ document.addEventListener("DOMContentLoaded", () => {
       "command": "message",
       "identifier": identifier(channelId),
       "data": `{\"action\": \"sync_videos\",
-          \"current_video_url\": \"${event.target.j.videoData.video_id}\",
           \"time\": \"${event.target.j.currentTime}\",
           \"playlist_index\": \"${event.target.j.playlistIndex}\",
           \"state\": \"${event.data}\"}`
@@ -251,8 +266,79 @@ document.addEventListener("DOMContentLoaded", () => {
           .then(r => r.json())
           .then(e => videoInitOnJoin(e, parseInt(data.message.time)))
       }
+      if (data.message.action === "send_message") {
+        const ul = document.querySelector('#chat')
+        const li = document.createElement('li')
+        li.className = 'list-group-item'
+        li.innerHTML = `${data.message.username}: ${data.message.content}`
+        ul.append(li)
+        ul.scrollTop = ul.scrollHeight
+      }
     }
   }
+
+  // Message stuff
+
+  function showMessageHistory(messages) {
+    const div = document.querySelector('#chat-container')
+    const ul = document.createElement('ul')
+    ul.id = 'chat'
+    ul.className = 'list-group'
+    messages.forEach(message => {
+      const li = document.createElement('li')
+      li.className = 'list-group-item'
+      li.innerHTML = `${message.username}: ${message.content}`
+      ul.append(li)
+    })
+    div.append(ul, showMessageForm())
+    ul.scrollTop = ul.scrollHeight
+  }
+
+  function showMessageForm() {
+    const form = document.createElement('form')
+    form.id = 'message-form'
+    form.className = 'form-inline'
+    form.innerHTML = '<input type="text" name="message" class="form-control" placeholder="Send a message..." autocomplete="off"><input type="submit" value="Send" class="btn btn-success">'
+    form.addEventListener('submit', handleMessageSubmit)
+    return form
+  }
+
+  function handleMessageSubmit(e) {
+    e.preventDefault()
+
+    const options = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        content: e.target.message.value,
+        channel_id: channelId,
+        user_id: currentUser.id
+      })
+    }
+    fetch('http://localhost:3000/messages', options)
+    const message = {
+      "command": "message",
+      "identifier": identifier(channelId),
+      "data": `{\"action\": \"send_message\",
+          \"content\": \"${e.target.message.value}\",
+          \"username\": \"${currentUser.username}\"}`
+    }
+    webSocket.send(JSON.stringify(message))
+
+
+    e.target.message.value = ''
+  }
+
+  function clearChannelPage() {
+    document.querySelector('#chat-container')
+      .innerHTML = ''
+    document.querySelector('#add-video-container')
+      .innerHTML = ''
+  }
+
+
 
   // getChannelList()
   showUserSignIn()
