@@ -3,9 +3,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let channelId;
   let currentUser;
   const container = document.querySelector('#container')
+  let hostPingInterval;
+  let hostMode = false;
+  let toggleEvent = false
+
 
   function identifier(channelId) {
-    return `{\"channel\":\"VideosChannel\",\"id\":\"${channelId}\"}`
+    return `{\"channel\":\"VideosChannel\",\"id\":\"${channelId}\",\"userid\":\"${currentUser.id}\"}`
   }
 
   function showUserSignIn() {
@@ -64,8 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = document.createElement('form')
     form.id = 'add-video-form'
     // form.className = 'form-inline'
-    form.innerHTML = `<div class = "input-group"><input type = "text"name = "textform"class = "form-control"placeholder = "YouTube Video ID..." autocomplete = "off"><div class = "input-group-append"><input type="submit"value = "Add Video To Playlist"class = "btn btn-success"></div></div>
-        `
+    form.innerHTML = `<div class = "input-group"><input type = "text"name = "textform"class = "form-control"placeholder = "YouTube Video ID..." autocomplete = "off"><div class = "input-group-append"><input type="submit"value = "Add Video To Playlist"class = "btn btn-success"></div></div>`
     form.addEventListener('submit', addVideoHandler)
     div.append(form)
   }
@@ -89,7 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function displayChannel(channel) {
     const li = document.createElement('li')
-    li.innerText = channel.name
+    li.innerHTML = `${channel.name} <span>${channel.view_count} Viewer${parseInt(channel.view_count) > 1 || parseInt(channel.view_count) === 0 ? 's' : ''}</span>`
     li.className = 'list-group-item'
     li.dataset.id = channel.id
     li.addEventListener('click', e => showChannelPage(e.target.dataset.id))
@@ -103,24 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
     showForm.innerText = '+ New Channel'
     const form = document.createElement('form')
     // form.className = 'form-inline'
-    form.innerHTML = ` <
-        div class = "input-group" >
-          <
-          input type = "text"
-        name = "channelname"
-        class = "form-control"
-        placeholder = "Channel name..."
-        autocomplete = "off" >
-          <
-          div class = "input-group-append" >
-          <
-          input type = "submit"
-        value = "Create Channel"
-        class = "btn btn-success" >
-          <
-          /div> <
-          /div>
-        `
+    form.innerHTML = `<div class="input-group"><input type = "text" name="channelname" class="form-control" placeholder="Channel name..." autocomplete="off"><div class="input-group-append"><input type="submit" value="Create Channel" class="btn btn-success"></div></div>`
     form.addEventListener('submit', handleNewChannel)
     form.hidden = true
     showForm.addEventListener('click', () => form.hidden === true ? form.hidden = false : form.hidden = true)
@@ -178,6 +164,22 @@ document.addEventListener("DOMContentLoaded", () => {
     joinChannel()
   }
 
+  function showViewCount(channel) {
+    let view_count = parseInt(channel.view_count) + 1
+    const div = document.querySelector('#chat-container')
+    const viewCount = document.createElement('div')
+    viewCount.id = 'view_count'
+    viewCount.className = 'card-header'
+    viewCount.innerText = `${view_count} Viewer${(view_count > 1 || view_count === 0) ? 's' : ''}`
+    const message = {
+      "command": "message",
+      "identifier": identifier(channelId),
+      "data": `{\"view_count\": \"${view_count}\"}`
+    }
+    webSocket.send(JSON.stringify(message))
+    div.append(viewCount)
+  }
+
   // function updateChannelSync() {
   //   const options = {
   //     method: "PATCH",
@@ -208,15 +210,21 @@ document.addEventListener("DOMContentLoaded", () => {
     button.innerHTML = `<i class="fas fa-angle-left"></i>`
     button.className = "btn btn-outline-dark border-0"
     button.addEventListener('click', () => {
+      toggleEvent = false
+      if (hostMode) {
+        hostMode = false
+        clearInterval(hostPingInterval)
+      }
       const unsubscribeMsg = {
         "command": "unsubscribe",
         "identifier": identifier(channelId)
       }
       console.log('unsubscribed')
       webSocket.send(JSON.stringify(unsubscribeMsg))
+      window.player.stopVideo()
+      hidePartyMode()
       toggleChannelPage(true)
       channelId = null
-      window.player.stopVideo()
       document.querySelector('iframe')
         .hidden = true
 
@@ -231,14 +239,14 @@ document.addEventListener("DOMContentLoaded", () => {
     fetch(`http://localhost:3000/channels/${channelId}`)
       .then(r => r.json())
       .then(json => {
-        showMessageHistory(json.messages)
-        videoInitOnJoin(json)
         const pageName = document.querySelector('#page-name')
         pageName.innerHTML = ''
         const h2 = document.createElement('h2')
-        // h2.innerHTML = showBackButton() + json.name
         h2.append(showBackButton(), json.name)
-        pageName.append(h2)
+        pageName.append(h2, toggleHostingBadge())
+        showViewCount(json)
+        showMessageHistory(json.messages)
+        videoInitOnJoin(json)
       })
 
     const subscribeMsg = {
@@ -247,6 +255,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     webSocket.send(JSON.stringify(subscribeMsg))
     socketListenerInit(webSocket)
+  }
+
+  function toggleHostingBadge() {
+    if (hostMode) {
+      const head = document.querySelector('#page-name')
+      const span = document.createElement('span')
+      span.className = "badge badge-pill badge-primary"
+      span.innerHTML = '<i class="fas fa-crown"></i> Hosting'
+      // span.hidden = true
+      return span
+    } else {
+      return ''
+    }
   }
 
   function openConnection() {
@@ -287,41 +308,100 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function onPlayerStateChange(event) {
-    // console.log(event)
-    const message = {
-      "command": "message",
-      "identifier": identifier(channelId),
-      "data": `{\"action\": \"sync_videos\",
-          \"time\": \"${event.target.j.currentTime}\",
-          \"playlist_index\": \"${event.target.j.playlistIndex}\",
-          \"state\": \"${event.data}\"}`
+    if (toggleEvent) {
+      const message = {
+        "command": "message",
+        "identifier": identifier(channelId),
+        "data": `{\"action\": \"sync_videos\",
+            \"time\": \"${event.target.j.currentTime}\",
+            \"playlist_index\": \"${event.target.j.playlistIndex}\",
+            \"state\": \"${event.data}\"}`
+      }
+      webSocket.send(JSON.stringify(message))
     }
-    webSocket.send(JSON.stringify(message))
   }
 
   function socketListenerInit(webSocket) {
     webSocket.onmessage = (event) => {
       const data = JSON.parse(event.data)
-      if (data["type"] !== "ping") {
-        console.log(data)
+      if (data.message === "YOU'RE THE HOST") {
+        toggleHostMode()
       }
-      if (data.message.action === "sync_videos") {
-        videoSyncControl(data.message)
+      if (data.message === "The host has left.") {
+        findNewHost()
       }
-      if (data.message.action === "add_video") {
-        fetch(`http://localhost:3000/channels/${channelId}`)
-          .then(r => r.json())
-          .then(e => videoInitOnJoin(e, parseInt(data.message.time)))
-      }
-      if (data.message.action === "send_message") {
-        const ul = document.querySelector('#chat')
-        const li = document.createElement('li')
-        li.className = 'list-group-item'
-        li.innerHTML = `<span class="message-username">${data.message.username}</span>: ${data.message.content}`
-        ul.append(li)
-        ul.scrollTop = ul.scrollHeight
+      try {
+        if (!!data.message["view_count"]) {
+          // console.log(data.message["view_count"])
+          let viewCount = document.querySelector('#view_count')
+          let view_count = parseInt(data.message["view_count"])
+          viewCount.innerText = `${view_count} Viewer${(view_count > 1 || view_count === 0) ? 's' : ''}`
+        }
+        if (data.message["party_mode"] === "true" && !hostMode) {
+          toggleEvent = true
+          webSocket.send(JSON.stringify(message))
+        }
+        if (data.message["party_mode"] === "false" && !hostMode) {
+          toggleEvent = false
+        }
+        if (data.message.action === "sync_videos") {
+          videoSyncControl(data.message)
+          if (hostMode) {
+            clearInterval(hostPingInterval)
+            hostPingInterval = setInterval(hostPing, 5000)
+          }
+        }
+        if (data.message.action === "add_video") {
+          fetch(`http://localhost:3000/channels/${channelId}`)
+            .then(r => r.json())
+            .then(e => videoInitOnJoin(e, parseInt(data.message.time)))
+          if (hostMode) {
+            clearInterval(hostPingInterval)
+            hostPingInterval = setInterval(hostPing, 5000)
+          }
+        }
+        if (data.message.action === "send_message") {
+          const ul = document.querySelector('#chat')
+          const li = document.createElement('li')
+          li.className = 'list-group-item'
+          li.innerHTML = `<span class="message-username">${data.message.username}</span>: ${data.message.content}`
+          ul.append(li)
+          ul.scrollTop = ul.scrollHeight
+        }
+      } catch (error) {
+        ':^)'
       }
     }
+  }
+
+  function findNewHost() {
+    const message = {
+      "command": "message",
+      "identifier": identifier(channelId),
+      "data": `{\"action\": \"delegate_host\"}`
+    }
+    webSocket.send(JSON.stringify(message))
+  }
+
+  function hostPing() {
+    console.log('pinging as host')
+    const message = {
+      "command": "message",
+      "identifier": identifier(channelId),
+      "data": `{\"action\": \"sync_videos\",
+          \"time\": \"${window.player.j.currentTime}\",
+          \"playlist_index\": \"${window.player.j.playlistIndex}\",
+          \"state\": \"${window.player.j.playerState}\"}`
+    }
+    webSocket.send(JSON.stringify(message))
+  }
+
+  function toggleHostMode() {
+    hostPingInterval = setInterval(hostPing, 5000)
+    hostMode = true
+    toggleEvent = true
+    const row = document.querySelectorAll('.row')[1]
+    row.append(showPartyModeButton())
   }
 
   // Message stuff
@@ -394,6 +474,55 @@ document.addEventListener("DOMContentLoaded", () => {
     add.innerHTML = ''
   }
 
+  function videoInitOnJoin(data, time) {
+    let playlistArr = data.videos.map(obj => obj.url)
+    window.player.loadPlaylist(playlistArr, parseInt(data.playlist_index), time ? time : parseInt(data.time))
+  }
+
+  function showPartyModeButton() {
+    const div = document.createElement('div')
+    div.className = "col-md-4 text-center"
+    div.id = 'party-container'
+    const button = document.createElement('button')
+    button.id = 'party-mode'
+    button.className = 'btn btn-danger'
+    button.innerHTML = '<i class="fas fa-users"></i> Switch to Party Mode'
+    button.addEventListener('click', () => {
+      if (button.classList.toggle("party-hard")) {
+        button.innerHTML = '<i class="fas fa-user"></i> Switch to Host Mode'
+        startTheParty()
+      } else {
+        button.innerHTML = '<i class="fas fa-users"></i> Switch to Party Mode'
+        endTheParty()
+      }
+    })
+    div.append(button)
+    return div
+  }
+
+  function hidePartyMode() {
+    document.querySelector('#party-container')
+      .remove()
+  }
+
+  function startTheParty() {
+    const message = {
+      "command": "message",
+      "identifier": identifier(channelId),
+      "data": `{\"party_mode\": \"true\"}`
+    }
+    webSocket.send(JSON.stringify(message))
+  }
+
+  function endTheParty() {
+    const message = {
+      "command": "message",
+      "identifier": identifier(channelId),
+      "data": `{\"party_mode\": \"false\"}`
+    }
+    webSocket.send(JSON.stringify(message))
+  }
+
   // getChannelList()
   toggleChannelPage(true)
   showUserSignIn()
@@ -401,10 +530,6 @@ document.addEventListener("DOMContentLoaded", () => {
 })
 
 
-function videoInitOnJoin(data, time) {
-  let playlistArr = data.videos.map(obj => obj.url)
-  window.player.loadPlaylist(playlistArr, parseInt(data.playlist_index), time ? time : parseInt(data.time))
-}
 
 function videoSyncControl(data) {
   if (window.player.getPlaylistIndex() !== parseInt(data.playlist_index)) {
