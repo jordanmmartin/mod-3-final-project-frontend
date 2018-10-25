@@ -9,10 +9,34 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showUserSignIn() {
+    const about = showAbout()
+    const div = document.createElement('div')
+    div.className = 'card'
     const form = document.createElement('form')
-    form.innerHTML = '<div class="form-group"><label for="username">Display Name:</label><input type="text" name="username" class="form-control" placeholder="Enter a name..."></div><input type="submit" class="btn btn-success" value="Enter">'
+    form.className = 'card-footer'
+    form.innerHTML = `
+            <label for="username-input">Display Name:</label>
+    <div class="input-group">
+        <input type="text" name="username" id="username-input" class="form-control form-control-lg" placeholder="Enter a name...">
+      <div class = "input-group-append">
+        <input type="submit" class="btn btn-success" value="Login">
+      </div>
+    </div>`
     form.addEventListener('submit', handleSignIn)
-    container.append(form)
+    div.append(form)
+    container.append(about, div)
+  }
+
+  function showAbout() {
+    const div = document.createElement('div')
+    div.class = "jumbotron"
+    div.innerHTML = `<div class="jumbotron">
+  <h2 class="display-4">What's tübular?</h1>
+  <p class="lead">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+  <p>Elementum curabitur vitae nunc sed velit dignissim sodales. Cursus euismod quis viverra nibh cras pulvinar mattis. A diam sollicitudin tempor id. Facilisi cras fermentum odio eu feugiat pretium. Viverra nam libero justo laoreet sit amet. A cras semper auctor neque vitae tempus quam. Eu scelerisque felis imperdiet proin. Scelerisque viverra mauris in aliquam sem fringilla ut morbi tincidunt. Proin sed libero enim sed faucibus turpis. Tincidunt vitae semper quis lectus nulla at volutpat. Ut enim blandit volutpat maecenas volutpat blandit aliquam etiam. Sit amet dictum sit amet justo donec. At tellus at urna condimentum mattis pellentesque id nibh tortor. Orci nulla pellentesque dignissim enim sit amet. Porta lorem mollis aliquam ut.</p>
+`
+    // form.addEventListener('submit', handleSignIn)
+    return div
   }
 
   function handleSignIn(e) {
@@ -30,57 +54,78 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(r => r.json())
       .then(user => {
         currentUser = { ...user }
-        console.log(currentUser.id)
       })
       .then(getChannelList)
       .then(() => webSocket = openConnection())
   }
 
-  function makeForm() {
+  function displayAddForm() {
     const div = document.querySelector('#add-video-container')
     const form = document.createElement('form')
     form.id = 'add-video-form'
-    form.className = 'form-inline'
-    form.innerHTML = `
-    <input type="text" name="textform" placeholder="YouTube Video ID..." class="form-control">
-    <input type="submit" value"Add Video" class="btn btn-success">
-    `;
+    // form.className = 'form-inline'
+    form.innerHTML = `<div class = "input-group"><input type = "text"name = "textform"class = "form-control"placeholder = "YouTube Video ID..." autocomplete = "off"><div class = "input-group-append"><input type="submit"value = "Add Video To Playlist"class = "btn btn-success"></div></div>
+        `
     form.addEventListener('submit', addVideoHandler)
     div.append(form)
   }
 
   function getChannelList() {
     container.innerHTML = ''
+    const card = document.createElement('div')
+    card.className = 'card'
     document.querySelector('#page-name')
       .innerHTML = "<h2>Channels</h2>"
-    container.append(displayNewChannelForm())
+    card.append(displayNewChannelForm())
     const ul = document.createElement('ul')
-    ul.className = 'channel-list'
+    ul.id = 'channel-list'
+    ul.className = 'list-group list-group-flush'
     fetch('http://localhost:3000/channels')
       .then(r => r.json())
       .then(channels => channels.forEach(channel => ul.append(displayChannel(channel))))
-    container.append(ul)
+    card.append(ul)
+    container.append(card)
   }
 
   function displayChannel(channel) {
     const li = document.createElement('li')
     li.innerText = channel.name
+    li.className = 'list-group-item'
     li.dataset.id = channel.id
     li.addEventListener('click', e => showChannelPage(e.target.dataset.id))
     return li
   }
 
   function displayNewChannelForm() {
+    const wrapper = document.createElement('div')
+    wrapper.className = 'card-header'
     const showForm = document.createElement('div')
-    showForm.innerText = 'New Channel +'
+    showForm.innerText = '+ New Channel'
     const form = document.createElement('form')
-    form.className = 'form-inline'
-    form.innerHTML = '<input type="text" name="channelname" placeholder="Channel name..." class="form-control"><input type="submit" value="Create Channel" class="btn btn-success">'
+    // form.className = 'form-inline'
+    form.innerHTML = ` <
+        div class = "input-group" >
+          <
+          input type = "text"
+        name = "channelname"
+        class = "form-control"
+        placeholder = "Channel name..."
+        autocomplete = "off" >
+          <
+          div class = "input-group-append" >
+          <
+          input type = "submit"
+        value = "Create Channel"
+        class = "btn btn-success" >
+          <
+          /div> <
+          /div>
+        `
     form.addEventListener('submit', handleNewChannel)
     form.hidden = true
-    showForm.append(form)
     showForm.addEventListener('click', () => form.hidden === true ? form.hidden = false : form.hidden = true)
-    return showForm
+    wrapper.append(showForm, form)
+    return wrapper
   }
 
   function handleNewChannel(e) {
@@ -105,7 +150,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function addVideoHandler(e) {
     e.preventDefault()
-    console.dir(e.target)
     let options = {
       method: "POST",
       headers: {
@@ -144,23 +188,25 @@ document.addEventListener("DOMContentLoaded", () => {
   //       time: window.player.getCurrentTime()
   //     })
   //   }
-  //   return fetch(`http://localhost:3000/channels/${channelId}`, options)
-  // }
+  //   return fetch(`
+  http: //localhost:3000/channels/${channelId}`, options)
+    // }
 
-  function sendAddedPlaylist() {
-    const message = {
-      "command": "message",
-      "identifier": identifier(channelId),
-      "data": `{\"action\": \"add_video\",\"time\": \"${window.player.getCurrentTime()}\"}`
+    function sendAddedPlaylist() {
+      const message = {
+        "command": "message",
+        "identifier": identifier(channelId),
+        "data": `{\"action\": \"add_video\",\"time\": \"${window.player.getCurrentTime()}\"}`
+      }
+      webSocket.send(JSON.stringify(message))
     }
-    webSocket.send(JSON.stringify(message))
-  }
 
   function showBackButton() {
     const button = document.createElement('button')
     button.id = 'back-button'
-    button.innerText = 'Leave Channel'
-    button.className = "btn btn-outline-danger btn-sm"
+    // button.innerText = 'Leave Channel'
+    button.innerHTML = `<i class="fas fa-angle-left"></i>`
+    button.className = "btn btn-outline-dark border-0"
     button.addEventListener('click', () => {
       const unsubscribeMsg = {
         "command": "unsubscribe",
@@ -168,7 +214,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       console.log('unsubscribed')
       webSocket.send(JSON.stringify(unsubscribeMsg))
-      clearChannelPage()
+      toggleChannelPage(true)
       channelId = null
       window.player.stopVideo()
       document.querySelector('iframe')
@@ -180,7 +226,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function joinChannel() {
-    makeForm()
+    toggleChannelPage(false)
+    displayAddForm()
     fetch(`http://localhost:3000/channels/${channelId}`)
       .then(r => r.json())
       .then(json => {
@@ -189,8 +236,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const pageName = document.querySelector('#page-name')
         pageName.innerHTML = ''
         const h2 = document.createElement('h2')
-        h2.innerText = json.name
-        h2.append(showBackButton())
+        // h2.innerHTML = showBackButton() + json.name
+        h2.append(showBackButton(), json.name)
         pageName.append(h2)
       })
 
@@ -270,7 +317,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const ul = document.querySelector('#chat')
         const li = document.createElement('li')
         li.className = 'list-group-item'
-        li.innerHTML = `${data.message.username}: ${data.message.content}`
+        li.innerHTML = `<span class="message-username">${data.message.username}</span>: ${data.message.content}`
         ul.append(li)
         ul.scrollTop = ul.scrollHeight
       }
@@ -283,11 +330,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const div = document.querySelector('#chat-container')
     const ul = document.createElement('ul')
     ul.id = 'chat'
-    ul.className = 'list-group'
+    ul.className = 'list-group list-group-flush'
     messages.forEach(message => {
       const li = document.createElement('li')
       li.className = 'list-group-item'
-      li.innerHTML = `${message.username}: ${message.content}`
+      li.innerHTML = `<span class="message-username">${message.username}</span>: ${message.content}`
       ul.append(li)
     })
     div.append(ul, showMessageForm())
@@ -297,8 +344,15 @@ document.addEventListener("DOMContentLoaded", () => {
   function showMessageForm() {
     const form = document.createElement('form')
     form.id = 'message-form'
-    form.className = 'form-inline'
-    form.innerHTML = '<input type="text" name="message" class="form-control" placeholder="Send a message..." autocomplete="off"><input type="submit" value="Send" class="btn btn-success">'
+    form.className = 'card-footer pb-1 pt-1'
+    form.innerHTML = `
+    <div class="input-group">
+    <input type="text" name="message" class="form-control" placeholder="Send a message..." autocomplete="off">
+      <div class="input-group-append">
+    <input type="submit" value="Send" class="btn btn-success">
+    </div>
+    </div>
+    `
     form.addEventListener('submit', handleMessageSubmit)
     return form
   }
@@ -331,16 +385,17 @@ document.addEventListener("DOMContentLoaded", () => {
     e.target.message.value = ''
   }
 
-  function clearChannelPage() {
-    document.querySelector('#chat-container')
-      .innerHTML = ''
-    document.querySelector('#add-video-container')
-      .innerHTML = ''
+  function toggleChannelPage(bool) {
+    const channel = document.querySelector('#channel-container')
+    channel.hidden = bool
+    const chat = document.querySelector('#chat-container')
+    chat.innerHTML = ''
+    const add = document.querySelector('#add-video-container')
+    add.innerHTML = ''
   }
 
-
-
   // getChannelList()
+  toggleChannelPage(true)
   showUserSignIn()
   initVideo()
 })
