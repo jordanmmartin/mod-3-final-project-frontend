@@ -6,9 +6,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let hostPingInterval;
   let hostMode = false;
   let toggleEvent = false
-  const confettiSettings = { target: 'confetti', max: 200, props: ['square', 'triangle', 'line'], rotate: true };
-  const confetti = new ConfettiGenerator(confettiSettings);
-
 
   function identifier(channelId) {
     return `{\"channel\":\"VideosChannel\",\"id\":\"${channelId}\",\"userid\":\"${currentUser.id}\"}`
@@ -16,33 +13,47 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showUserSignIn() {
     const about = showAbout()
-    const div = document.createElement('div')
-    div.className = 'card'
-    const form = document.createElement('form')
-    form.className = 'card-footer'
-    form.innerHTML = `
-            <label for="username-input">Display Name:</label>
-    <div class="input-group">
-        <input type="text" name="username" id="username-input" class="form-control form-control-lg" placeholder="Enter a name...">
-      <div class = "input-group-append">
-        <button type="submit" class="btn btn-success"><i class="fas fa-sign-in-alt"></i> Login</button>
-      </div>
-    </div>`
-    form.addEventListener('submit', handleSignIn)
-    div.append(form)
-    container.append(about, div)
+    // const div = document.createElement('div')
+    // div.className = 'card'
+    // const form = document.createElement('form')
+    // form.className = 'card-footer'
+    // form.innerHTML = `
+    //         <label for="username-input">Join now!</label>
+    // <div class="input-group">
+    //     <input type="text" name="username" id="username-input" class="form-control form-control-lg" placeholder="Enter a name...">
+    //   <div class = "input-group-append">
+    //     <button type="submit" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Login</button>
+    //   </div>
+    // </div>`
+    // form.addEventListener('submit', handleSignIn)
+    // // div.append(form)
+    // about.append(form)
+    container.append(about)
     // form.querySelectorAll('input')[1].innerHTML = `<i class="fas fa-sign-in-alt"></i>`
   }
 
   function showAbout() {
     const div = document.createElement('div')
-    div.class = "jumbotron"
-    div.innerHTML = `<div class="jumbotron">
-  <h2 class="display-4">What's tübular?</h1>
-  <p class="lead">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
-  <p>Elementum curabitur vitae nunc sed velit dignissim sodales. Cursus euismod quis viverra nibh cras pulvinar mattis. A diam sollicitudin tempor id. Facilisi cras fermentum odio eu feugiat pretium. Viverra nam libero justo laoreet sit amet. A cras semper auctor neque vitae tempus quam. Eu scelerisque felis imperdiet proin. Scelerisque viverra mauris in aliquam sem fringilla ut morbi tincidunt. Proin sed libero enim sed faucibus turpis. Tincidunt vitae semper quis lectus nulla at volutpat. Ut enim blandit volutpat maecenas volutpat blandit aliquam etiam. Sit amet dictum sit amet justo donec. At tellus at urna condimentum mattis pellentesque id nibh tortor. Orci nulla pellentesque dignissim enim sit amet. Porta lorem mollis aliquam ut.</p>
+    div.className = "jumbotron"
+    div.innerHTML = `
+  <h2 class="display-4">What the hell is this?</h2>
+  <p class="lead">tübular is a web app, made for friends to watch videos together in real-time.</p>
+  <p>Create collaborative playlists, chat together, and enjoy your favorite YouTube videos in our immersive media viewing experience.</p>
 `
-    // form.addEventListener('submit', handleSignIn)
+    // const div2 = document.createElement('div')
+    // div2.className = 'card'
+    const form = document.createElement('form')
+    // form.className = 'card-footer'
+    form.innerHTML = `
+            <label for="username-input" id="join-label">Join now!</label>
+    <div class="input-group">
+        <input type="text" name="username" id="username-input" class="form-control form-control-lg" placeholder="Enter a name...">
+      <div class = "input-group-append">
+        <button type="submit" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Login</button>
+      </div>
+    </div>`
+    form.addEventListener('submit', handleSignIn)
+    div.append(form)
     return div
   }
 
@@ -61,6 +72,8 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(r => r.json())
       .then(user => {
         currentUser = { ...user }
+        document.querySelector('#current_user')
+          .innerText = `Logged in as ${currentUser.username}`
       })
       .then(getChannelList)
       .then(() => webSocket = openConnection())
@@ -71,13 +84,68 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = document.createElement('form')
     form.id = 'add-video-form'
     // form.className = 'form-inline'
-    form.innerHTML = `<div class = "input-group"><input type = "text"name = "textform"class = "form-control"placeholder = "YouTube Video ID..." autocomplete = "off"><div class = "input-group-append"><input type="submit"value = "Add Video To Playlist"class = "btn btn-success"></div></div>`
+    form.innerHTML = `<div class = "input-group"><input type = "text"name = "textform"class = "form-control"placeholder = "YouTube Video ID..." autocomplete = "off"><div class = "input-group-append"><input type="submit"value = "Add Video To Playlist"class = "btn btn-primary"></div></div>`
     form.addEventListener('submit', addVideoHandler)
     div.append(form)
   }
 
+  function toggleChannels() {
+    let channels = document.querySelectorAll('#channel-list li')
+    channels.forEach(channel => {
+      if (channel.dataset.active === "false" && channel.hidden === false) {
+        channel.hidden = true
+      } else {
+        channel.hidden = false
+      }
+    })
+  }
+
+  function showToggleActiveButton() {
+    const div = document.createElement('div')
+    div.className = 'col-sm-3'
+    div.id = 'toggle-container'
+    const button = document.createElement('button')
+    button.innerHTML = '<i class="far fa-clock"></i> Toggle Active'
+    button.id = 'toggle-active'
+    button.className = 'btn btn-primary'
+    button.addEventListener('click', toggleChannels)
+    div.append(button)
+    return div
+  }
+
+  function showSearchForm() {
+    const div = document.createElement('div')
+    div.id = 'search-container'
+    div.className = 'col-sm-9'
+    const span = document.createElement('span')
+    span.className = "fa fa-search"
+    const search = document.createElement('input')
+    search.className = 'form-control'
+    search.id = 'search-form'
+    search.placeholder = 'Search by channel name...'
+    search.addEventListener('input', handleSearch)
+    div.append(span, search)
+    return div
+  }
+
+  function handleSearch(e) {
+    let channels = document.querySelectorAll('#channel-list li')
+    channels.forEach(channel => {
+      if (channel.innerText.toLowerCase()
+        .search(e.target.value.toLowerCase()) === -1) {
+        channel.hidden = true
+      } else {
+        channel.hidden = false
+      }
+    })
+  }
+
   function getChannelList() {
     container.innerHTML = ''
+    const row = document.createElement('div')
+    row.className = 'row'
+    row.id = 'search-row'
+    row.append(showSearchForm(), showToggleActiveButton())
     const card = document.createElement('div')
     card.className = 'card'
     document.querySelector('#page-name')
@@ -90,7 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(r => r.json())
       .then(channels => channels.forEach(channel => ul.append(displayChannel(channel))))
     card.append(ul)
-    container.append(card)
+    container.append(row, card)
   }
 
   function displayChannel(channel) {
@@ -98,6 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
     li.innerHTML = `${channel.name} <span>${channel.view_count} Viewer${parseInt(channel.view_count) > 1 || parseInt(channel.view_count) === 0 ? 's' : ''}</span>`
     li.className = 'list-group-item'
     li.dataset.id = channel.id
+    li.dataset.active = channel.active
     li.addEventListener('click', e => showChannelPage(e.target.dataset.id))
     return li
   }
@@ -111,7 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const form = document.createElement('form')
     form.id = 'new-channel-form'
     // form.className = 'form-inline'
-    form.innerHTML = `<div class="input-group"><input type = "text" name="channelname" class="form-control" placeholder="Channel name..." autocomplete="off"><div class="input-group-append"><input type="submit" value="Create Channel" class="btn btn-success"></div></div>`
+    form.innerHTML = `<div class="input-group"><input type = "text" name="channelname" class="form-control" placeholder="Channel name..." autocomplete="off"><div class="input-group-append"><input type="submit" value="Create Channel" class="btn btn-primary"></div></div>`
     form.addEventListener('submit', handleNewChannel)
     form.hidden = true
     showForm.addEventListener('click', () => form.hidden === true ? form.hidden = false : form.hidden = true)
@@ -174,7 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const div = document.querySelector('#chat-container')
     const viewCount = document.createElement('div')
     viewCount.id = 'view_count'
-    viewCount.className = 'card-header'
+    viewCount.className = 'card-header text-center'
     viewCount.innerText = `${view_count} Viewer${(view_count > 1 || view_count === 0) ? 's' : ''}`
     const message = {
       "command": "message",
@@ -185,40 +254,27 @@ document.addEventListener("DOMContentLoaded", () => {
     div.append(viewCount)
   }
 
-  // function updateChannelSync() {
-  //   const options = {
-  //     method: "PATCH",
-  //     headers: {
-  //       "Content-Type": "application/json"
-  //     },
-  //     body: JSON.stringify({
-  //       time: window.player.getCurrentTime()
-  //     })
-  //   }
-  //   return fetch(`
-  http: //localhost:3000/channels/${channelId}`, options)
-    // }
-
-    function sendAddedPlaylist() {
-      const message = {
-        "command": "message",
-        "identifier": identifier(channelId),
-        "data": `{\"action\": \"add_video\",\"time\": \"${window.player.getCurrentTime()}\"}`
-      }
-      webSocket.send(JSON.stringify(message))
+  function sendAddedPlaylist() {
+    const message = {
+      "command": "message",
+      "identifier": identifier(channelId),
+      "data": `{\"action\": \"add_video\",\"time\": \"${window.player.getCurrentTime()}\"}`
     }
+    webSocket.send(JSON.stringify(message))
+  }
 
   function showBackButton() {
     const button = document.createElement('button')
     button.id = 'back-button'
     // button.innerText = 'Leave Channel'
     button.innerHTML = `<i class="fas fa-angle-left"></i>`
-    button.className = "btn btn-outline-dark border-0"
+    button.className = "btn btn-outline-primary border-0"
     button.addEventListener('click', () => {
       toggleEvent = false
       if (hostMode) {
         hostMode = false
         clearInterval(hostPingInterval)
+        hidePartyMode()
       }
       const unsubscribeMsg = {
         "command": "unsubscribe",
@@ -227,8 +283,10 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log('unsubscribed')
       webSocket.send(JSON.stringify(unsubscribeMsg))
       window.player.stopVideo()
-      hidePartyMode()
       toggleChannelPage(true)
+      if (!!document.querySelector('canvas')) {
+        endConfetti()
+      }
       channelId = null
       document.querySelector('iframe')
         .hidden = true
@@ -344,10 +402,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (data.message["party_mode"] === "true") {
           toggleEvent = true
-          confetti.render();
+          startConfetti()
         }
         if (data.message["party_mode"] === "false") {
-          confetti.clear();
+          endConfetti()
           if (!hostMode) {
             toggleEvent = false
           }
@@ -372,7 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
           const ul = document.querySelector('#chat')
           const li = document.createElement('li')
           li.className = 'list-group-item'
-          li.innerHTML = `<span class="message-username">${data.message.username}</span>: ${data.message.content}`
+          li.innerHTML = `<span class="chat-timestamps text-muted">${data.message.time} </span><span class="message-username">${data.message.username}</span>: ${data.message.content}`
           ul.append(li)
           ul.scrollTop = ul.scrollHeight
         }
@@ -422,7 +480,7 @@ document.addEventListener("DOMContentLoaded", () => {
     messages.forEach(message => {
       const li = document.createElement('li')
       li.className = 'list-group-item'
-      li.innerHTML = `<span class="message-username">${message.username}</span>: ${message.content}`
+      li.innerHTML = `<span class="chat-timestamps text-muted">${message.time} </span><span class="message-username">${message.username}</span>: ${message.content}`
       ul.append(li)
     })
     div.append(ul, showMessageForm())
@@ -437,7 +495,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <div class="input-group">
     <input type="text" name="message" class="form-control" placeholder="Send a message..." autocomplete="off">
       <div class="input-group-append">
-    <input type="submit" value="Send" class="btn btn-success">
+    <input type="submit" value="Send" class="btn btn-primary">
     </div>
     </div>
     `
@@ -460,10 +518,13 @@ document.addEventListener("DOMContentLoaded", () => {
       })
     }
     fetch('http://localhost:3000/messages', options)
+    let d = new Date();
+    let n = d.toLocaleTimeString();
     const message = {
       "command": "message",
       "identifier": identifier(channelId),
       "data": `{\"action\": \"send_message\",
+                \"time\": \"${n.slice(0,5)+n.slice(9,11)}\",
           \"content\": \"${e.target.message.value}\",
           \"username\": \"${currentUser.username}\"}`
     }
@@ -529,6 +590,24 @@ document.addEventListener("DOMContentLoaded", () => {
       "data": `{\"party_mode\": \"false\"}`
     }
     webSocket.send(JSON.stringify(message))
+  }
+
+  function startConfetti() {
+    document.querySelector('#logo')
+      .innerText = 'tübular🎉'
+    const canvas = document.createElement('canvas')
+    canvas.id = 'confetti'
+    document.body.append(canvas)
+    const confettiSettings = { target: 'confetti', max: 200, props: ['square', 'triangle', 'line'], rotate: true };
+    const confetti = new ConfettiGenerator(confettiSettings);
+    confetti.render()
+  }
+
+  function endConfetti() {
+    document.querySelector('#logo')
+      .innerText = 'tübular'
+    document.querySelector('canvas')
+      .remove()
   }
 
   // getChannelList()
