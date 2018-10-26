@@ -6,6 +6,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let hostPingInterval;
   let hostMode = false;
   let toggleEvent = false
+  const ipAddress = 'localhost'
+  const baseUrl = `http://${ipAddress}:3000`
 
   function identifier(channelId) {
     return `{\"channel\":\"VideosChannel\",\"id\":\"${channelId}\",\"userid\":\"${currentUser.id}\"}`
@@ -13,23 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showUserSignIn() {
     const about = showAbout()
-    // const div = document.createElement('div')
-    // div.className = 'card'
-    // const form = document.createElement('form')
-    // form.className = 'card-footer'
-    // form.innerHTML = `
-    //         <label for="username-input">Join now!</label>
-    // <div class="input-group">
-    //     <input type="text" name="username" id="username-input" class="form-control form-control-lg" placeholder="Enter a name...">
-    //   <div class = "input-group-append">
-    //     <button type="submit" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Login</button>
-    //   </div>
-    // </div>`
-    // form.addEventListener('submit', handleSignIn)
-    // // div.append(form)
-    // about.append(form)
     container.append(about)
-    // form.querySelectorAll('input')[1].innerHTML = `<i class="fas fa-sign-in-alt"></i>`
   }
 
   function showAbout() {
@@ -47,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
     form.innerHTML = `
             <label for="username-input" id="join-label">Join now!</label>
     <div class="input-group">
-        <input type="text" name="username" id="username-input" class="form-control form-control-lg" placeholder="Enter a name...">
+        <input type="text" name="username" id="username-input" class="form-control form-control-lg" placeholder="Enter a name..." autocomplete="off">
       <div class = "input-group-append">
         <button type="submit" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Login</button>
       </div>
@@ -68,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
         username: e.target.username.value
       })
     }
-    fetch('http://localhost:3000/users', options)
+    fetch(`${baseUrl}/users`, options)
       .then(r => r.json())
       .then(user => {
         currentUser = { ...user }
@@ -154,7 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const ul = document.createElement('ul')
     ul.id = 'channel-list'
     ul.className = 'list-group list-group-flush'
-    fetch('http://localhost:3000/channels')
+    fetch(`${baseUrl}/channels`)
       .then(r => r.json())
       .then(channels => channels.forEach(channel => ul.append(displayChannel(channel))))
     card.append(ul)
@@ -203,7 +189,7 @@ document.addEventListener("DOMContentLoaded", () => {
         playlist_index: 0
       })
     }
-    fetch('http://localhost:3000/channels', options)
+    fetch(`${baseUrl}/channels`, options)
       .then(r => r.json())
       .then(channel => showChannelPage(channel.id))
   }
@@ -221,7 +207,7 @@ document.addEventListener("DOMContentLoaded", () => {
         channel_id: channelId
       })
     }
-    fetch('http://localhost:3000/videos', options)
+    fetch(`${baseUrl}/videos`, options)
       .then(r => r.json())
       .then(json => {
         sendAddedPlaylist()
@@ -299,7 +285,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function joinChannel() {
     toggleChannelPage(false)
     displayAddForm()
-    fetch(`http://localhost:3000/channels/${channelId}`)
+    fetch(`${baseUrl}/channels/${channelId}`)
       .then(r => r.json())
       .then(json => {
         const pageName = document.querySelector('#page-name')
@@ -335,7 +321,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function openConnection() {
     console.log('creating connection')
-    return new WebSocket("ws://localhost:3000/cable")
+    return new WebSocket(`ws://${ipAddress}:3000/cable`)
   }
 
   function initVideo() {
@@ -347,7 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const tag = document.createElement('script');
       const firstScript = document.getElementsByTagName('script')[0];
 
-      tag.src = 'https://www.youtube.com/iframe_api';
+      tag.src = 'http://www.youtube.com/iframe_api';
       tag.id = youtubeScriptId;
       firstScript.parentNode.insertBefore(tag, firstScript);
     }
@@ -361,6 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
         },
         width: '100%',
         height: '100%',
+        origin: `${baseUrl}`,
         events: {
           'onStateChange': onPlayerStateChange
         }
@@ -418,7 +405,7 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
         if (data.message.action === "add_video") {
-          fetch(`http://localhost:3000/channels/${channelId}`)
+          fetch(`${baseUrl}/channels/${channelId}`)
             .then(r => r.json())
             .then(e => videoInitOnJoin(e, parseInt(data.message.time)))
           if (hostMode) {
@@ -517,7 +504,7 @@ document.addEventListener("DOMContentLoaded", () => {
         user_id: currentUser.id
       })
     }
-    fetch('http://localhost:3000/messages', options)
+    fetch(`${baseUrl}/messages`, options)
     let d = new Date();
     let n = d.toLocaleTimeString();
     const message = {
