@@ -6,6 +6,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let hostPingInterval;
   let hostMode = false;
   let toggleEvent = false
+  const confettiSettings = { target: 'confetti', max: 200, props: ['square', 'triangle', 'line'], rotate: true };
+  const confetti = new ConfettiGenerator(confettiSettings);
 
 
   function identifier(channelId) {
@@ -23,12 +25,13 @@ document.addEventListener("DOMContentLoaded", () => {
     <div class="input-group">
         <input type="text" name="username" id="username-input" class="form-control form-control-lg" placeholder="Enter a name...">
       <div class = "input-group-append">
-        <input type="submit" class="btn btn-success" value="Login">
+        <button type="submit" class="btn btn-success"><i class="fas fa-sign-in-alt"></i> Login</button>
       </div>
     </div>`
     form.addEventListener('submit', handleSignIn)
     div.append(form)
     container.append(about, div)
+    // form.querySelectorAll('input')[1].innerHTML = `<i class="fas fa-sign-in-alt"></i>`
   }
 
   function showAbout() {
@@ -103,8 +106,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const wrapper = document.createElement('div')
     wrapper.className = 'card-header'
     const showForm = document.createElement('div')
-    showForm.innerText = '+ New Channel'
+    showForm.id = 'show-form'
+    showForm.innerHTML = '<i class="fas fa-plus"></i>'
     const form = document.createElement('form')
+    form.id = 'new-channel-form'
     // form.className = 'form-inline'
     form.innerHTML = `<div class="input-group"><input type = "text" name="channelname" class="form-control" placeholder="Channel name..." autocomplete="off"><div class="input-group-append"><input type="submit" value="Create Channel" class="btn btn-success"></div></div>`
     form.addEventListener('submit', handleNewChannel)
@@ -337,12 +342,15 @@ document.addEventListener("DOMContentLoaded", () => {
           let view_count = parseInt(data.message["view_count"])
           viewCount.innerText = `${view_count} Viewer${(view_count > 1 || view_count === 0) ? 's' : ''}`
         }
-        if (data.message["party_mode"] === "true" && !hostMode) {
+        if (data.message["party_mode"] === "true") {
           toggleEvent = true
-          webSocket.send(JSON.stringify(message))
+          confetti.render();
         }
-        if (data.message["party_mode"] === "false" && !hostMode) {
-          toggleEvent = false
+        if (data.message["party_mode"] === "false") {
+          confetti.clear();
+          if (!hostMode) {
+            toggleEvent = false
+          }
         }
         if (data.message.action === "sync_videos") {
           videoSyncControl(data.message)

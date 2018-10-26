@@ -9,6 +9,14 @@ header {
   padding-top: 10px;
 }
 
+#show-form {
+  display:inline;
+}
+
+/* #new-channel-form {
+  display: inline;
+} */
+
 #chat {
   overflow-y: scroll;
     /* height: 360px; */
@@ -33,6 +41,10 @@ h1 {
   text-transform: lowercase;
 }
 
+#page-name {
+  margin-bottom:5px;
+}
+
 #page-name h2 {
   font-weight: 700;
   display: inline;
@@ -52,6 +64,10 @@ h1 {
   padding-top: 5px;
 }
 
+#channel-list > li:nth-of-type(odd) {
+    background-color: #fafafa;
+}
+
 #channel-list li:hover {
   background-color: #eee;
   cursor: pointer;
@@ -65,6 +81,13 @@ h1 {
 #party-mode {
   width: 100%;
   margin-top: 5px;
+}
+
+#confetti {
+  position: fixed;
+top: 0;
+left: 0;
+z-index: -1;
 }
 
 .party-hard {
