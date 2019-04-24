@@ -609,7 +609,7 @@ function videoSyncControl(data) {
   if (window.player.getPlaylistIndex() !== parseInt(data.playlist_index)) {
     player.playVideoAt(parseInt(data.playlist_index))
   }
-  if (Math.abs(window.player.getCurrentTime() - parseInt(data.time)) > 1) {
+  if (Math.abs(window.player.getCurrentTime() - parseInt(data.time)) > .5) {
     window.player.seekTo(parseInt(data.time))
   }
   switch (data.state) {
