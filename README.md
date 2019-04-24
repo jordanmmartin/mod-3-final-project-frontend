@@ -34,7 +34,7 @@ There is no user auth, just enter a username and you're good to go. You can find
 
 ## Contributing
 
-1. Fork it (<https://github.com/gothfemme/mod-3-final-project-frontend/fork>)
+1. Fork it (<https://github.com/jordanmmartin/mod-3-final-project-frontend/fork>)
 2. Create your feature branch (`git checkout -b feature/fooBar`)
 3. Commit your changes (`git commit -am 'Add some fooBar'`)
 4. Push to the branch (`git push origin feature/fooBar`)
